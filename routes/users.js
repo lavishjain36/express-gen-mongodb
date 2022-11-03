@@ -1,74 +1,112 @@
 var express = require('express');
 var router = express.Router();
-var {mongodb,MongoClient,dbUrl,dbName}=require('../dbSchema');
-
-/* GET users listing. */
-// router.get('/', function(req, res, next) {
-//   res.send('respond with a resource');
-// });
-
+const {dbUrl,mongodb,MongoClient} = require('../dbSchema');//imported db schema
 
 router.get('/all',async(req,res)=>{
-  const client=await MongoClient.connect(dbUrl);
-  try {
-    const db=await client.db(dbName);
-    let users=await db.collection('users').find().toArray();
-    res.json({
-      statusCode:200,
-      users
-    })
-    
-  } catch (error) {
-    console.log(error);
-    res.json({
-      statusCode:500,
-      message:"Internal Server Error"
-    })
-    
-  }
-  finally
-  {
-    client.close();
-  }
+  const client = await MongoClient.connect(dbUrl);
+    try {
+      const db = await client.db('b26');
+      let document = await db.collection('users').find().toArray();
+
+      res.json({
+        message:"Data fetched Successfully!",
+        data:document
+      })
+
+    } catch (error) { 
+      console.log(error);
+      res.json({
+        message:"Internal Server Error!"
+      })
+    }
+    finally{
+      client.close();
+    }
 })
 
 
-
-router.post('/signup',async(req,res)=>{
-const client=await MongoClient.connect(dbUrl);
-try {
+router.post("/register",async(req,res)=>{
   const client=await MongoClient.connect(dbUrl);
-  try {
-    const db=await client.db('b1');
-    let user=await db.collection('users').find({email:req.body.email}).toArray();
-    if(user.length > 0)
-    {
+  try{
+    const db=await client.db('b26');
+    let user=await db.collection('users').findOne({email:req.body.email});//collecting emil
+    if(user){
       res.json({
-        statusCode:400,
-        message:"user already exists"
+        message:"User with same email already exists"
       })
     }else{
       let document=await db.collection('users').insertOne(req.body);
       res.json({
-        statusCode:201,
-        message:"Signup Successfully",
-        data:document
+        message:"User Registered Successfully",
+        document
       })
     }
-    
-  } catch (error) {
-    console.log(error)
+  }catch(error){
+    console.log(error);
     res.json({
-      statusCode:500,
-      message:"Internal Server Error",
+      message:"Internal Server Error"
     })
   }
-}finally{
+  finally{
     client.close();
   }
-  
+})
+
+//route for updating the data 
+router.put('/edit-user/:id',async(req,res)=>{
+  const client=await MongoClient.connect(dbUrl);
+  try {
+    const db=await client.db('b26');
+    let document=await db.collection('users').findOneAndReplace({_id:mongodb.ObjectId(req.params.id)},req.body)
+    if(document.value){
+      res.json({
+        message:"Data Changed Successfully",
+        data:document
+      })
+    }else{
+      res.status(404).json(({
+        message:"Invalid Object Id"
+      }))
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({
+      message:"Internal Server Error"
+    })
+    
+  }
+  finally{
+    client.close();
+  }
+})
+
+//route for deleting the user data 
+router.delete('/delete-user/:id',async(req,res)=>{
+  const client=await MongoClient.connect(dbUrl);
+  try {
+    const db=await client.db("b26");
+    let document=await db.collection('users').findOneAndDelete({_id:mongodb.ObjectId(req.params.id)})
+    if(document.value){
+      res.json({
+        message: "Data Deleted Successfully"
+
+      })
+    }else{
+      res.status(404).json({
+        message: "Invalid id"
+      })
+    }
+  } catch (error) {
+    console.log(error);
+    res.json({
+      message: "Internal Server Error"
+    })
+  }
+  finally{
+    client.close();
+  }
 })
 
 
-router.post('/login')
+
 module.exports = router;
